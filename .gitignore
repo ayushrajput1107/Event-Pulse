@@ -1,0 +1,34 @@
+# Node Modules
+node_modules/
+
+# Environment Variables
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# JetBrains IDE
+.idea/
+
+# Coverage
+coverage/
+
+# Build
+dist/
+build/
+
+# Temporary Files
+tmp/
+temp/
+
+# Package Lock (Keep this if working solo)
+# package-lock.json
