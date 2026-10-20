@@ -66,6 +66,7 @@ export const AttendeeDashboard = () => {
     const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' | 'organizer-app'
     const [selectedRegistration, setSelectedRegistration] = useState(null);
     const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+    const [ticketFilter, setTicketFilter] = useState('all'); // 'all' | 'confirmed' | 'pending'
 
     // Multi-step form state
     const [formStep, setFormStep] = useState(0);
@@ -224,83 +225,181 @@ export const AttendeeDashboard = () => {
             </div>
 
             {/* Tab 1: My Registered Tickets */}
-            {activeTab === 'tickets' && (
-                <div className="space-y-6">
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                        <Ticket className="w-5 h-5 text-indigo-400" />
-                        <span>Active Registrations &amp; Digital Passes</span>
-                    </h2>
+            {activeTab === 'tickets' && (() => {
+                const pendingCount = registrations.filter(r => r.status === 'PENDING').length;
+                const confirmedCount = registrations.filter(r => r.status === 'CONFIRMED').length;
 
-                    {registrations.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {registrations.map((reg) => {
-                                const event = reg.event || {};
-                                const basicInfo = event.basicInfo || {};
-                                const schedule = event.schedule || {};
+                const filteredRegistrations = registrations.filter(reg => {
+                    if (ticketFilter === 'confirmed') return reg.status === 'CONFIRMED';
+                    if (ticketFilter === 'pending') return reg.status === 'PENDING';
+                    return true;
+                });
 
-                                return (
-                                    <div key={reg._id} className="glass-card glass-card-hover rounded-3xl p-6 border border-slate-800 space-y-4 flex flex-col justify-between">
-                                        <div>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase">
-                                                    {basicInfo.category || 'EVENT'}
-                                                </span>
-                                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${reg.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
-                                                        reg.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                return (
+                    <div className="space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Ticket className="w-5 h-5 text-indigo-400" />
+                                <span>Active Registrations &amp; Digital Passes</span>
+                            </h2>
+
+                            {/* Ticket Filter Pills */}
+                            <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800 self-start sm:self-auto text-xs">
+                                <button
+                                    onClick={() => setTicketFilter('all')}
+                                    className={`px-3 py-1.5 rounded-lg font-semibold transition ${
+                                        ticketFilter === 'all' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                                    }`}
+                                >
+                                    All ({registrations.length})
+                                </button>
+                                <button
+                                    onClick={() => setTicketFilter('confirmed')}
+                                    className={`px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1 ${
+                                        ticketFilter === 'confirmed' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-emerald-300'
+                                    }`}
+                                >
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    <span>Confirmed ({confirmedCount})</span>
+                                </button>
+                                <button
+                                    onClick={() => setTicketFilter('pending')}
+                                    className={`px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1 ${
+                                        ticketFilter === 'pending' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-amber-300'
+                                    }`}
+                                >
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span>Waiting ({pendingCount})</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {filteredRegistrations.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredRegistrations.map((reg) => {
+                                    const event = reg.event || {};
+                                    const basicInfo = event.basicInfo || {};
+                                    const schedule = event.schedule || {};
+                                    const isConfirmed = reg.status === 'CONFIRMED';
+                                    const isPending = reg.status === 'PENDING';
+                                    const isRejected = reg.status === 'REJECTED';
+
+                                    return (
+                                        <div key={reg._id} className="glass-card glass-card-hover rounded-3xl p-6 border border-slate-800 space-y-4 flex flex-col justify-between">
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase">
+                                                        {basicInfo.category || 'EVENT'}
+                                                    </span>
+                                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border ${
+                                                        isConfirmed
+                                                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                                            : isPending
+                                                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                                            : isRejected
+                                                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                                                            : 'bg-slate-800 text-slate-400 border-slate-700'
                                                     }`}>
-                                                    {reg.status}
-                                                </span>
+                                                        {isConfirmed && <CheckCircle className="w-3 h-3" />}
+                                                        {isPending && <Clock className="w-3 h-3 animate-pulse" />}
+                                                        {isRejected && <XCircle className="w-3 h-3" />}
+                                                        <span>{isPending ? 'WAITING FOR APPROVAL' : reg.status}</span>
+                                                    </span>
+                                                </div>
+
+                                                <h3 className="text-base font-bold text-white line-clamp-2">{basicInfo.title || 'Event Title'}</h3>
+
+                                                <div className="mt-3 space-y-1.5 text-xs text-slate-300">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                                                        <span>{schedule.startDate ? new Date(schedule.startDate).toLocaleDateString() : 'TBA'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Ticket className="w-3.5 h-3.5 text-violet-400" />
+                                                        <span>{reg.ticketCount} Ticket(s) Reserved</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Notice for Pending registrations */}
+                                                {isPending && (
+                                                    <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-start gap-2">
+                                                        <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400 animate-pulse" />
+                                                        <span>
+                                                            <strong>Entry Pending:</strong> Waiting for organizer approval. QR pass will be unlocked and visible once confirmed.
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {/* Review notes for Rejected registrations */}
+                                                {isRejected && reg.reviewNotes && (
+                                                    <div className="mt-3 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300">
+                                                        <span className="font-bold block">Organizer Note:</span> {reg.reviewNotes}
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            <h3 className="text-base font-bold text-white line-clamp-2">{basicInfo.title || 'Event Title'}</h3>
+                                            <div className="pt-4 border-t border-slate-800/80 flex items-center gap-2">
+                                                {isConfirmed ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedRegistration(reg);
+                                                            setIsQRModalOpen(true);
+                                                        }}
+                                                        className="flex-1 gradient-button py-2.5 px-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 shadow-md hover:scale-[1.02] transition"
+                                                    >
+                                                        <QrCode className="w-4 h-4" />
+                                                        <span>View Digital Pass</span>
+                                                    </button>
+                                                ) : isPending ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedRegistration(reg);
+                                                            setIsQRModalOpen(true);
+                                                        }}
+                                                        className="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 transition flex items-center justify-center gap-1.5"
+                                                        title="Click to check registration status"
+                                                    >
+                                                        <Clock className="w-4 h-4 animate-pulse" />
+                                                        <span>Waiting for Approval</span>
+                                                    </button>
+                                                ) : isRejected ? (
+                                                    <div className="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-400 text-center border border-rose-500/20">
+                                                        Entry Rejected
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 text-center">
+                                                        Cancelled
+                                                    </div>
+                                                )}
 
-                                            <div className="mt-3 space-y-1.5 text-xs text-slate-300">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Calendar className="w-3.5 h-3.5 text-indigo-400" />
-                                                    <span>{schedule.startDate ? new Date(schedule.startDate).toLocaleDateString() : 'TBA'}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <Ticket className="w-3.5 h-3.5 text-violet-400" />
-                                                    <span>{reg.ticketCount} Ticket(s) Reserved</span>
-                                                </div>
+                                                {reg.status !== 'CANCELLED' && !isRejected && (
+                                                    <button
+                                                        onClick={() => handleCancelRegistration(reg._id)}
+                                                        className="p-2.5 rounded-xl bg-slate-900 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 border border-slate-800 transition"
+                                                        title="Cancel Registration"
+                                                    >
+                                                        <XCircle className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
-
-                                        <div className="pt-4 border-t border-slate-800/80 flex items-center gap-2">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedRegistration(reg);
-                                                    setIsQRModalOpen(true);
-                                                }}
-                                                className="flex-1 gradient-button py-2.5 px-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 shadow-md"
-                                            >
-                                                <QrCode className="w-4 h-4" />
-                                                <span>View Digital Pass</span>
-                                            </button>
-
-                                            {reg.status !== 'CANCELLED' && (
-                                                <button
-                                                    onClick={() => handleCancelRegistration(reg._id)}
-                                                    className="p-2.5 rounded-xl bg-slate-900 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 border border-slate-800 transition"
-                                                    title="Cancel Registration"
-                                                >
-                                                    <XCircle className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div className="p-12 text-center rounded-3xl glass-card border border-slate-800">
-                            <Ticket className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-                            <h3 className="text-base font-bold text-white">No Tickets Found</h3>
-                            <p className="text-xs text-slate-400 mt-1">You haven't registered for any events yet.</p>
-                        </div>
-                    )}
-                </div>
-            )}
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="p-12 text-center rounded-3xl glass-card border border-slate-800">
+                                <Ticket className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+                                <h3 className="text-base font-bold text-white">No Tickets Found</h3>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    {ticketFilter === 'all'
+                                        ? "You haven't registered for any events yet."
+                                        : `No ${ticketFilter} registrations found.`}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                );
+            })()}
 
             {/* Tab 2: Organizer Application Form / Status */}
             {activeTab === 'organizer-app' && (

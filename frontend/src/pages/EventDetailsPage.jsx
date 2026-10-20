@@ -4,7 +4,7 @@ import { eventAPI, registrationAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { QRTicketModal } from '../components/QRTicketModal';
 import confetti from 'canvas-confetti';
-import { Calendar, MapPin, Users, ShieldCheck, Ticket, ArrowLeft, CheckCircle, AlertTriangle, ExternalLink, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, ShieldCheck, Ticket, ArrowLeft, CheckCircle, AlertTriangle, ExternalLink, Clock, X } from 'lucide-react';
 
 export const EventDetailsPage = () => {
     const { eventId } = useParams();
@@ -17,6 +17,7 @@ export const EventDetailsPage = () => {
     const [bookingLoading, setBookingLoading] = useState(false);
     const [activeRegistration, setActiveRegistration] = useState(null);
     const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+    const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -65,6 +66,7 @@ export const EventDetailsPage = () => {
     const organizer = event.organizer || {};
 
     const isRegistrationOpen = event.status === 'REGISTRATION_OPEN';
+    const requiresApproval = !!registrationPolicy.requiresApproval;
 
     const formatDate = (dateStr) => {
         if (!dateStr) return 'TBA';
@@ -89,13 +91,22 @@ export const EventDetailsPage = () => {
             const res = await registrationAPI.register(event._id, ticketCount);
             if (res.data?.success && res.data?.data) {
                 const regObj = res.data.data;
-                setActiveRegistration({
+                const regWithEvent = {
                     ...regObj,
                     event: event,
-                });
-                showToast('Ticket Registered Successfully!', 'success');
-                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-                setIsTicketModalOpen(true);
+                };
+                setActiveRegistration(regWithEvent);
+
+                if (regObj.status === 'PENDING' || requiresApproval) {
+                    // USER WILL NOT GET ANY QR CODE UPON REGISTRATION
+                    showToast('Registration submitted! Awaiting organizer approval.', 'info');
+                    setIsPendingModalOpen(true);
+                } else {
+                    // Instant confirmation only when approval is not required
+                    showToast('Ticket Registered Successfully!', 'success');
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                    setIsTicketModalOpen(true);
+                }
             }
         } catch (err) {
             const errMsg = err.response?.data?.message || err.message || 'Ticket booking failed.';
@@ -130,6 +141,11 @@ export const EventDetailsPage = () => {
                         <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-900/80 text-emerald-400 border border-emerald-500/30 backdrop-blur-md">
                             {event.status?.replace('_', ' ')}
                         </span>
+                        {requiresApproval && (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 backdrop-blur-md flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" /> Approval Required
+                            </span>
+                        )}
                     </div>
 
                     <h1 className="text-2xl sm:text-4xl font-black text-white leading-tight drop-shadow-md">
@@ -280,14 +296,18 @@ export const EventDetailsPage = () => {
                             <button
                                 onClick={handleBookTicket}
                                 disabled={bookingLoading}
-                                className="w-full gradient-button py-3.5 rounded-xl font-bold text-xs text-white shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
+                                className={`w-full py-3.5 rounded-xl font-bold text-xs text-white shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform ${
+                                    requiresApproval
+                                        ? 'bg-gradient-to-r from-amber-600 to-orange-600 shadow-amber-600/30'
+                                        : 'gradient-button shadow-indigo-600/30'
+                                }`}
                             >
                                 {bookingLoading ? (
                                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                 ) : (
                                     <>
                                         <Ticket className="w-4 h-4" />
-                                        <span>Confirm Ticket Registration</span>
+                                        <span>{requiresApproval ? 'Submit Registration (Requires Approval)' : 'Confirm Ticket Registration'}</span>
                                     </>
                                 )}
                             </button>
@@ -298,12 +318,25 @@ export const EventDetailsPage = () => {
                         )}
 
                         {/* Policy Badges */}
-                        <div className="pt-4 border-t border-slate-800 space-y-2 text-[11px] text-slate-400">
-                            <div className="flex items-center gap-2">
-                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                <span>Instant QR Digital Pass Generation</span>
-                            </div>
-                            <div className="flex items-center gap-2">
+                        <div className="pt-4 border-t border-slate-800 space-y-2.5 text-[11px]">
+                            {requiresApproval ? (
+                                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-1">
+                                    <div className="flex items-center gap-2 font-bold">
+                                        <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                                        <span>Approval Required by Organizer</span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-300 leading-normal pl-6">
+                                        You will not receive a QR code immediately. Your digital pass unlocks once the organizer verifies and confirms your entry.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 text-slate-400">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <span>Instant QR Digital Pass Generation</span>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-2 text-slate-400">
                                 <CheckCircle className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                 <span>{policy.cancellationAllowed ? 'Cancellation Allowed' : 'Non-cancellable ticket'}</span>
                             </div>
@@ -315,13 +348,80 @@ export const EventDetailsPage = () => {
 
             </div>
 
-            {/* QR Ticket Modal */}
+            {/* Instant QR Ticket Modal (Only for events not requiring approval) */}
             <QRTicketModal
                 isOpen={isTicketModalOpen}
                 onClose={() => setIsTicketModalOpen(false)}
                 registration={activeRegistration}
                 event={event}
             />
+
+            {/* Awaiting Approval Modal (NO QR CODE) */}
+            {isPendingModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in">
+                    <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-center space-y-6">
+                        <button
+                            onClick={() => setIsPendingModalOpen(false)}
+                            className="absolute top-4 right-4 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white p-1.5 rounded-full transition"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+                            <Clock className="w-8 h-8 animate-pulse" />
+                        </div>
+
+                        <div>
+                            <span className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wide">
+                                Status: Waiting for Approval
+                            </span>
+                            <h3 className="text-xl font-extrabold text-white mt-3">
+                                Registration Request Submitted
+                            </h3>
+                            <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                                This event requires organizer approval before an entry pass is issued. Your request has been recorded and is currently in the <strong className="text-amber-400">Waiting</strong> queue.
+                            </p>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-left space-y-2 text-xs">
+                            <div className="flex justify-between">
+                                <span className="text-slate-400">Event:</span>
+                                <span className="font-bold text-white truncate max-w-[200px]">{basicInfo.title}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-400">Requested Tickets:</span>
+                                <span className="font-bold text-indigo-400">{activeRegistration?.ticketCount || ticketCount} Ticket(s)</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-400">Digital Pass QR:</span>
+                                <span className="font-bold text-amber-400">Locked (Awaiting Approval)</span>
+                            </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] text-slate-400 text-left flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                            <span>
+                                You will <strong>not</strong> receive a QR code now. Once the organizer verifies and approves your registration, the QR pass will become active in your Registration Center.
+                            </span>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                            <button
+                                onClick={() => navigate('/dashboard')}
+                                className="flex-1 gradient-button py-3 rounded-xl font-bold text-xs text-white shadow-lg shadow-indigo-600/20"
+                            >
+                                Go to Registration Center
+                            </button>
+                            <button
+                                onClick={() => setIsPendingModalOpen(false)}
+                                className="px-5 py-3 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );

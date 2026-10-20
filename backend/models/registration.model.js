@@ -1,13 +1,11 @@
 const mongoose = require("mongoose");
 
-
 const registrationSchema = new mongoose.Schema(
     {
-        event:{
+        event: {
             type: mongoose.Schema.Types.ObjectId,
-            ref:"Event",
+            ref: "Event",
             required: true,
-
         },
 
         user: {
@@ -16,13 +14,13 @@ const registrationSchema = new mongoose.Schema(
             required: true,
         },
 
-        ticketCount:{
+        ticketCount: {
             type: Number,
             required: true,
             min: 1,
         },
 
-        status:{
+        status: {
             type: String,
             enum: [
                 "PENDING",
@@ -33,16 +31,25 @@ const registrationSchema = new mongoose.Schema(
             default: "CONFIRMED",
         },
 
-        registeredAt:{
+        registeredAt: {
             type: Date,
-            default: Date.now(),
+            default: Date.now,
         },
 
-        cancelledAt:{
-            type:Date,
+        cancelledAt: {
+            type: Date,
             default: null,
         },
-        
+
+        approvedAt: {
+            type: Date,
+            default: null,
+        },
+
+        reviewNotes: {
+            type: String,
+            default: "",
+        },
     },
     {
         timestamps: true,
@@ -51,18 +58,17 @@ const registrationSchema = new mongoose.Schema(
 );
 
 registrationSchema.index(
-    {event : 1,user: 1},
-    {unique: true}
+    { event: 1, user: 1 },
+    { unique: true }
 );
 
-registrationSchema.index({ event: 1});
-registrationSchema.index({user: 1});
-registrationSchema.index({status: 1});
+registrationSchema.index({ event: 1 });
+registrationSchema.index({ user: 1 });
+registrationSchema.index({ status: 1 });
 
 const Registration = mongoose.model(
     "Registration",
     registrationSchema
 );
-
 
 module.exports = Registration;
